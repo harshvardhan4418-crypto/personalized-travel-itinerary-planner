@@ -503,7 +503,7 @@ export function exportItineraryToPdf(trip, itinerary) {
     doc.setFontSize(7.5)
     doc.setTextColor(120, 135, 128)
     doc.text(
-      `Personalized Travel Itinerary Planner  |  Exported on ${exportDateStr}`,
+      `TravelMate — Personalized Travel Itinerary  |  Exported on ${exportDateStr}`,
       margin,
       pageHeight - 7.5
     )

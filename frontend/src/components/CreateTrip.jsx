@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../services/supabase'
 
-function CreateTrip() {
+function CreateTrip({ onTripCreated }) {
   const [destination, setDestination] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -22,6 +22,11 @@ function CreateTrip() {
     setSuccess('')
 
     // Client-side validations
+    if (!destination.trim()) {
+      setError('Please provide a destination for your trip.')
+      return
+    }
+
     if (new Date(endDate) < new Date(startDate)) {
       setError('End date cannot be earlier than start date.')
       return
@@ -71,7 +76,12 @@ function CreateTrip() {
         return
       }
 
-      setSuccess('Trip created successfully!')
+      setSuccess('Trip created successfully! It is now saved in Your Journeys.')
+      if (onTripCreated) {
+        onTripCreated()
+      }
+
+      // Reset form fields
       setDestination('')
       setStartDate('')
       setEndDate('')
@@ -90,327 +100,205 @@ function CreateTrip() {
   }
 
   return (
-    <section
-      className="features"
-      style={{ maxWidth: '640px', margin: '0 auto', textAlign: 'left' }}
-    >
-      <p className="eyebrow" style={{ textAlign: 'center' }}>
-        PLAN YOUR ADVENTURE
-      </p>
-      <h2 style={{ textAlign: 'center', marginBottom: '28px' }}>
-        Create New Trip
-      </h2>
+    <section className="trip-form-section-container">
+      <div className="trip-form-card">
+        {/* Header */}
+        <div className="trip-form-header">
+          <span className="trip-form-eyebrow">PLAN YOUR ADVENTURE</span>
+          <h2 className="trip-form-title">Create New Trip</h2>
+          <p className="trip-form-subtitle">
+            Enter your destination and travel preferences to generate a tailored itinerary.
+          </p>
+        </div>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
-      >
-        {error && (
-          <div
-            style={{
-              color: '#c53030',
-              backgroundColor: '#fff5f5',
-              border: '1px solid #feb2b2',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              fontSize: '14px',
-            }}
+        <form onSubmit={handleSubmit} className="trip-form-body">
+          {/* Feedback Alerts */}
+          {error && (
+            <div className="trip-form-alert trip-form-alert-error" role="alert">
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="trip-form-alert trip-form-alert-success" role="status">
+              <span>✅</span>
+              <span>{success}</span>
+            </div>
+          )}
+
+          {/* Section 1: Where & When */}
+          <div className="trip-form-group-section">
+            <div className="trip-form-section-heading">
+              <span>📍</span>
+              <span>Where &amp; When</span>
+            </div>
+
+            <div className="trip-field-group">
+              <label htmlFor="destination" className="trip-field-label">
+                Destination <span className="trip-field-required">*</span>
+              </label>
+              <input
+                id="destination"
+                type="text"
+                className="trip-field-input"
+                placeholder="e.g. Kyoto, Japan or Rome, Italy"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="trip-field-row-2">
+              <div className="trip-field-group">
+                <label htmlFor="startDate" className="trip-field-label">
+                  Start Date <span className="trip-field-required">*</span>
+                </label>
+                <input
+                  id="startDate"
+                  type="date"
+                  className="trip-field-input"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="trip-field-group">
+                <label htmlFor="endDate" className="trip-field-label">
+                  End Date <span className="trip-field-required">*</span>
+                </label>
+                <input
+                  id="endDate"
+                  type="date"
+                  className="trip-field-input"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Budget & Travelers */}
+          <div className="trip-form-group-section">
+            <div className="trip-form-section-heading">
+              <span>💰</span>
+              <span>Budget &amp; Group</span>
+            </div>
+
+            <div className="trip-field-row-2">
+              <div className="trip-field-group">
+                <label htmlFor="groupSize" className="trip-field-label">
+                  Group Size <span className="trip-field-required">*</span>
+                </label>
+                <input
+                  id="groupSize"
+                  type="number"
+                  min="1"
+                  className="trip-field-input"
+                  value={groupSize}
+                  onChange={(e) => setGroupSize(Number(e.target.value))}
+                  required
+                />
+              </div>
+
+              <div className="trip-field-row-budget">
+                <div className="trip-field-group">
+                  <label htmlFor="dailyBudget" className="trip-field-label">
+                    Daily Budget <span className="trip-field-required">*</span>
+                  </label>
+                  <input
+                    id="dailyBudget"
+                    type="number"
+                    min="0"
+                    className="trip-field-input"
+                    placeholder="e.g. 5000"
+                    value={dailyBudget}
+                    onChange={(e) => setDailyBudget(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="trip-field-group">
+                  <label htmlFor="currency" className="trip-field-label">
+                    Currency
+                  </label>
+                  <select
+                    id="currency"
+                    className="trip-field-select"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  >
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Preferences */}
+          <div className="trip-form-group-section">
+            <div className="trip-form-section-heading">
+              <span>✨</span>
+              <span>Travel Preferences</span>
+            </div>
+
+            <div className="trip-field-row-2">
+              <div className="trip-field-group">
+                <label htmlFor="travelStyle" className="trip-field-label">
+                  Travel Style
+                </label>
+                <select
+                  id="travelStyle"
+                  className="trip-field-select"
+                  value={travelStyle}
+                  onChange={(e) => setTravelStyle(e.target.value)}
+                >
+                  <option value="Adventure">🎒 Adventure</option>
+                  <option value="Relaxation">🏖️ Relaxation</option>
+                  <option value="Culture">🏛️ Culture</option>
+                  <option value="Nature">🌲 Nature</option>
+                </select>
+              </div>
+
+              <div className="trip-field-group">
+                <label htmlFor="pace" className="trip-field-label">
+                  Pace
+                </label>
+                <select
+                  id="pace"
+                  className="trip-field-select"
+                  value={pace}
+                  onChange={(e) => setPace(e.target.value)}
+                >
+                  <option value="Relaxed">🐢 Relaxed</option>
+                  <option value="Moderate">🚶 Moderate</option>
+                  <option value="Fast">⚡ Fast</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Primary Submit Button */}
+          <button
+            type="submit"
+            className="trip-form-submit-btn"
+            disabled={loading}
           >
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div
-            style={{
-              color: '#22543d',
-              backgroundColor: '#f0fff4',
-              border: '1px solid #9ae6b4',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              fontSize: '14px',
-            }}
-          >
-            {success}
-          </div>
-        )}
-
-        <div>
-          <label
-            htmlFor="destination"
-            style={{
-              display: 'block',
-              marginBottom: '6px',
-              fontWeight: 600,
-              fontSize: '14px',
-            }}
-          >
-            Destination
-          </label>
-          <input
-            id="destination"
-            type="text"
-            placeholder="e.g. Goa, Paris, Tokyo"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              border: '1px solid #dcdcd0',
-              fontSize: '15px',
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <label
-              htmlFor="startDate"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              Start Date
-            </label>
-            <input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="endDate"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              End Date
-            </label>
-            <input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-              }}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <label
-              htmlFor="groupSize"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              Group Size
-            </label>
-            <input
-              id="groupSize"
-              type="number"
-              min="1"
-              value={groupSize}
-              onChange={(e) => setGroupSize(Number(e.target.value))}
-              required
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="dailyBudget"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              Daily Budget
-            </label>
-            <input
-              id="dailyBudget"
-              type="number"
-              min="0"
-              placeholder="e.g. 5000"
-              value={dailyBudget}
-              onChange={(e) => setDailyBudget(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-              }}
-            />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <label
-              htmlFor="currency"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              Currency
-            </label>
-            <select
-              id="currency"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-                background: '#fff',
-              }}
-            >
-              <option value="INR">INR</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="travelStyle"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              Travel Style
-            </label>
-            <select
-              id="travelStyle"
-              value={travelStyle}
-              onChange={(e) => setTravelStyle(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-                background: '#fff',
-              }}
-            >
-              <option value="Adventure">Adventure</option>
-              <option value="Relaxation">Relaxation</option>
-              <option value="Culture">Culture</option>
-              <option value="Nature">Nature</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="pace"
-              style={{
-                display: 'block',
-                marginBottom: '6px',
-                fontWeight: 600,
-                fontSize: '14px',
-              }}
-            >
-              Pace
-            </label>
-            <select
-              id="pace"
-              value={pace}
-              onChange={(e) => setPace(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                border: '1px solid #dcdcd0',
-                fontSize: '15px',
-                background: '#fff',
-              }}
-            >
-              <option value="Relaxed">Relaxed</option>
-              <option value="Moderate">Moderate</option>
-              <option value="Fast">Fast</option>
-            </select>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          className="primary-button"
-          disabled={loading}
-          style={{
-            marginTop: '12px',
-            width: '100%',
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? 'Creating Trip...' : 'Create Trip'}
-        </button>
-      </form>
+            {loading ? (
+              <>
+                <span className="spinner-dot" aria-hidden="true"></span>
+                <span>Creating Trip...</span>
+              </>
+            ) : (
+              <span>✨ Create Trip</span>
+            )}
+          </button>
+        </form>
+      </div>
     </section>
   )
 }

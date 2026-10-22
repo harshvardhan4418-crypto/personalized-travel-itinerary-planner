@@ -11,7 +11,7 @@ function createNumberedPin(number) {
     className: 'custom-map-pin',
     html: `
       <div style="
-        background-color: #1b5947;
+        background: linear-gradient(135deg, #1b5947, #2d8a6e);
         color: #ffffff;
         width: 28px;
         height: 28px;
@@ -20,14 +20,14 @@ function createNumberedPin(number) {
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.32);
+        box-shadow: 0 3px 8px rgba(15,41,34,0.35);
         border: 2px solid #ffffff;
       ">
         <span style="
           transform: rotate(45deg);
           font-size: 12px;
           font-weight: 700;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Manrope', -apple-system, sans-serif;
           line-height: 1;
         ">${number}</span>
       </div>
@@ -169,9 +169,9 @@ function DayMap({ dayNumber, destination, activities, dayTitle }) {
 
       const directionsQuery = [stop.activity.title, destText].filter(Boolean).join(', ')
       const popupHtml = `
-        <div style="font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.4; color: #18352f; min-width: 170px;">
+        <div style="font-family: 'Manrope', -apple-system, sans-serif; font-size: 13px; line-height: 1.4; color: #18352f; min-width: 170px;">
           <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-            <span style="background-color: #1b5947; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">Stop ${stop.stopNumber}</span>
+            <span style="background: linear-gradient(135deg, #1b5947, #2d8a6e); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">Stop ${stop.stopNumber}</span>
             ${stop.activity.time ? `<span style="font-size: 11px; color: #60716a;">🕒 ${stop.activity.time}</span>` : ''}
           </div>
           <strong style="font-size: 13px; display: block; margin-bottom: 6px; color: #18352f;">

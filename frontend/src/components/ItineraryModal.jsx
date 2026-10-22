@@ -148,6 +148,17 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
   const [pdfSuccess, setPdfSuccess] = useState('')
   const [error, setError] = useState('')
 
+  // Escape key closes modal safely
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !generating && !exportingPdf) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [generating, exportingPdf, onClose])
+
   useEffect(() => {
     const fetchExistingItinerary = async () => {
       setError('')
@@ -350,177 +361,117 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
   const averageDailyCost =
     totalDays && totalDays > 0 ? totalEstimatedCost / totalDays : null
 
+  // Safe percentage calculation for visual progress bar
+  const budgetPercentage =
+    plannedTripBudget && plannedTripBudget > 0
+      ? Math.min(100, Math.round((totalEstimatedCost / plannedTripBudget) * 100))
+      : null
+
   return (
     <div
       className="itinerary-modal-overlay"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !generating) onClose()
+        if (e.target === e.currentTarget && !generating && !exportingPdf) onClose()
       }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(24, 53, 47, 0.55)',
-        backdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '12px',
-      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="itinerary-modal-title"
     >
       <div
         className="itinerary-modal-container"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '18px',
-          maxWidth: '900px',
-          width: '100%',
-          height: '90vh',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          boxShadow: '0 24px 50px rgba(0, 0, 0, 0.2)',
-          border: '1px solid #e9e9df',
-          position: 'relative',
-        }}
       >
-        {/* Header */}
-        <div
-          className="itinerary-modal-header"
-          style={{
-            flex: '0 0 auto',
-            flexShrink: 0,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            padding: '22px 28px 16px',
-            borderBottom: '1px solid #eef2ee',
-            backgroundColor: '#fff',
-          }}
-        >
-          <div>
-            <p className="eyebrow" style={{ margin: '0 0 4px' }}>
-              AI TRAVEL ITINERARY
-            </p>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: '24px',
-                fontFamily: 'Manrope, sans-serif',
-                color: '#18352f',
-              }}
-            >
+        {/* Modal Header */}
+        <div className="itinerary-modal-header">
+          <div className="itinerary-header-info">
+            <span className="trip-form-eyebrow">AI TRAVEL ITINERARY</span>
+            <h2 id="itinerary-modal-title">
               {trip?.destination ?? 'Trip'} Itinerary
             </h2>
-            <p
-              style={{
-                margin: '4px 0 0',
-                fontSize: '13px',
-                color: '#60716a',
-              }}
-            >
-              {trip?.start_date && trip?.end_date
-                ? `${trip.start_date} to ${trip.end_date}`
-                : 'Dates not set'}{' '}
-              • {trip?.travel_style ?? 'Standard'} • {trip?.pace ?? 'Moderate'}{' '}
-              pace
-            </p>
+
+            <div className="itinerary-meta-pill-row">
+              {trip?.start_date && trip?.end_date && (
+                <span className="itinerary-meta-chip">
+                  🗓️ {trip.start_date} → {trip.end_date}
+                </span>
+              )}
+              {totalDays !== null && (
+                <span className="itinerary-meta-chip">
+                  ⏱️ {totalDays} {daysLabel}
+                </span>
+              )}
+              {trip?.travel_style && (
+                <span className="itinerary-meta-chip">
+                  🎒 {trip.travel_style}
+                </span>
+              )}
+              {trip?.pace && (
+                <span className="itinerary-meta-chip">
+                  ⚡ {trip.pace} Pace
+                </span>
+              )}
+              {trip?.group_size && (
+                <span className="itinerary-meta-chip">
+                  👥 {trip.group_size} {Number(trip.group_size) === 1 ? 'Traveler' : 'Travelers'}
+                </span>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {itinerary && !generating && (
               <button
                 type="button"
+                className="btn-pdf-export"
                 onClick={handleDownloadPdf}
                 disabled={exportingPdf}
-                style={{
-                  backgroundColor: '#eef5ee',
-                  border: '1px solid #c2dac2',
-                  color: '#1b5947',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  cursor: exportingPdf ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  transition: 'background-color 0.15s ease',
-                }}
                 title="Download itinerary as PDF"
               >
-                {exportingPdf ? '⏳ Exporting...' : '📄 Download PDF'}
+                {exportingPdf ? (
+                  <>
+                    <span className="spinner-dot" aria-hidden="true" style={{ width: '12px', height: '12px' }}></span>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <span>📄 Download PDF</span>
+                )}
               </button>
             )}
+
             <button
               type="button"
+              className="edit-modal-close-btn"
               onClick={onClose}
-              disabled={generating}
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '22px',
-                cursor: generating ? 'not-allowed' : 'pointer',
-                color: '#60716a',
-                padding: '4px 8px',
-              }}
-              aria-label="Close"
+              disabled={generating || exportingPdf}
+              aria-label="Close itinerary modal"
             >
               ✕
             </button>
           </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div
-          className="itinerary-modal-body"
-          style={{
-            flex: '1 1 auto',
-            minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            overscrollBehaviorY: 'contain',
-            padding: '20px 28px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '18px',
-          }}
-        >
-          {/* Error Banner */}
+        {/* Scrollable Content Body */}
+        <div className="itinerary-modal-body">
+          {/* Feedback Alerts */}
           {error && (
-            <div
-              style={{
-                color: '#c53030',
-                backgroundColor: '#fff5f5',
-                border: '1px solid #feb2b2',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
-                flexShrink: 0,
-              }}
-            >
-              <span>{error}</span>
+            <div className="trip-form-alert trip-form-alert-error" role="alert">
+              <span>⚠️</span>
+              <span style={{ flex: 1 }}>{error}</span>
               <button
+                type="button"
+                className="btn-secondary"
+                style={{ padding: '4px 10px', fontSize: '12px' }}
                 onClick={handleGenerate}
-                style={{
-                  backgroundColor: '#c53030',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  flexShrink: 0,
-                }}
               >
                 Retry
               </button>
+            </div>
+          )}
+
+          {pdfSuccess && (
+            <div className="trip-form-alert trip-form-alert-success" role="status">
+              <span>✅</span>
+              <span>{pdfSuccess}</span>
             </div>
           )}
 
@@ -529,45 +480,24 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
             <div
               style={{
                 textAlign: 'center',
-                padding: '50px 20px',
+                padding: '60px 20px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '14px',
-                flexShrink: 0,
+                gap: '16px',
               }}
             >
-              <div
-                style={{
-                  fontSize: '36px',
-                  animation: 'pulse 1.5s infinite',
-                }}
-              >
+              <div style={{ fontSize: '40px', animation: 'pulseSlow 1.5s infinite' }}>
                 ✨
               </div>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: '18px',
-                  color: '#1b5947',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-              >
+              <h3 style={{ margin: 0, fontSize: '20px', fontFamily: 'var(--font-heading)', color: 'var(--color-brand-primary)' }}>
                 {generating
                   ? 'Generating Your Personalized AI Itinerary...'
                   : 'Loading saved itinerary...'}
               </h3>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: '14px',
-                  color: '#60716a',
-                  maxWidth: '460px',
-                  lineHeight: 1.6,
-                }}
-              >
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)', maxWidth: '480px', lineHeight: 1.6 }}>
                 {generating
-                  ? `Consulting Groq AI with your ${trip?.travel_style} travel style, ${trip?.pace} pace, and daily budget to build an optimized day-by-day plan.`
+                  ? `Consulting Groq AI with your ${trip?.travel_style || 'custom'} travel style, ${trip?.pace || 'moderate'} pace, and budget preferences to create an optimized schedule.`
                   : 'Retrieving your itinerary details.'}
               </p>
             </div>
@@ -575,53 +505,18 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
 
           {/* Empty State: No Itinerary Yet */}
           {!itinerary && !loading && !generating && (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '40px 20px',
-                background: '#fbfaf6',
-                borderRadius: '14px',
-                border: '1px dashed #dcdcd0',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '12px',
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: '38px' }}>🧭</span>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: '18px',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-              >
-                No Itinerary Generated Yet
-              </h3>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: '14px',
-                  color: '#60716a',
-                  maxWidth: '480px',
-                  lineHeight: 1.6,
-                }}
-              >
-                Click below to have our AI create a custom day-wise itinerary
-                for <strong>{trip?.destination}</strong> complete with
-                activities, timing recommendations, and cost estimates.
+            <div className="dashboard-empty-card" style={{ padding: '48px 24px' }}>
+              <div className="dashboard-empty-icon" aria-hidden="true">🧭</div>
+              <h3>No Itinerary Generated Yet</h3>
+              <p>
+                Click below to have our AI create a custom day-wise itinerary for{' '}
+                <strong>{trip?.destination}</strong> complete with attraction timings, interactive maps, and budget tracking.
               </p>
               <button
                 type="button"
-                className="primary-button"
+                className="btn-primary"
                 onClick={handleGenerate}
-                style={{
-                  marginTop: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
+                style={{ padding: '12px 24px', fontSize: '14.5px' }}
               >
                 ✨ Generate AI Itinerary
               </button>
@@ -631,75 +526,23 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
           {/* Itinerary Display */}
           {itinerary && !loading && !generating && (
             <>
-              {/* Summary Card */}
+              {/* Trip Summary Box */}
               {itinerary.summary && (
-                <div
-                  style={{
-                    backgroundColor: '#eef5ee',
-                    border: '1px solid #dce8dc',
-                    padding: '14px 18px',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    color: '#2d473e',
-                    lineHeight: 1.6,
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="itinerary-summary-box">
                   <strong>Trip Summary:</strong> {itinerary.summary}
                 </div>
               )}
 
-              {/* Trip Budget & Cost Overview Card */}
-              <div
-                className="itinerary-budget-card"
-                style={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e2e8e2',
-                  borderRadius: '12px',
-                  padding: '16px 20px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  flexShrink: 0,
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>💳</span>
-                    <h4
-                      style={{
-                        margin: 0,
-                        fontSize: '15px',
-                        fontFamily: 'Manrope, sans-serif',
-                        color: '#18352f',
-                        fontWeight: 700,
-                      }}
-                    >
-                      Trip Budget & Cost Overview
-                    </h4>
+              {/* Redesigned Budget & Cost Overview Card */}
+              <div className="itinerary-budget-card">
+                <div className="itinerary-budget-header">
+                  <div className="itinerary-budget-title">
+                    <span>💳</span>
+                    <span>Trip Budget &amp; Cost Overview</span>
                   </div>
 
                   {remainingBudget !== null && (
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        padding: '4px 10px',
-                        borderRadius: '20px',
-                        backgroundColor: isOverBudget ? '#fff5f5' : '#f0fff4',
-                        color: isOverBudget ? '#c53030' : '#22543d',
-                        border: isOverBudget ? '1px solid #feb2b2' : '1px solid #9ae6b4',
-                      }}
-                    >
+                    <span className={`budget-status-pill ${isOverBudget ? 'over' : 'within'}`}>
                       {isOverBudget
                         ? `⚠️ Over Budget by ${formatCurrency(Math.abs(remainingBudget), tripCurrency)}`
                         : `✅ Within Budget (${formatCurrency(remainingBudget, tripCurrency)} remaining)`}
@@ -707,35 +550,33 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                   )}
                 </div>
 
+                {/* Visual Progress Bar (when budget exists) */}
+                {budgetPercentage !== null && (
+                  <div className="budget-progress-container">
+                    <div className="budget-progress-track">
+                      <div
+                        className={`budget-progress-bar ${isOverBudget ? 'over' : 'within'}`}
+                        style={{ width: `${budgetPercentage}%` }}
+                      ></div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                      <span>{budgetPercentage}% of planned budget allocated</span>
+                      <span>Total: {formatCurrency(plannedTripBudget, tripCurrency)}</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* 4 Metric Columns Grid */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-                    gap: '10px',
-                  }}
-                >
+                <div className="budget-metrics-grid">
                   {/* 1. Planned Trip Budget */}
-                  <div
-                    style={{
-                      backgroundColor: '#fbfaf6',
-                      border: '1px solid #edece6',
-                      borderRadius: '9px',
-                      padding: '10px 14px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                    }}
-                  >
-                    <span style={{ fontSize: '11px', color: '#60716a', fontWeight: 600 }}>
-                      Planned Trip Budget
-                    </span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#18352f' }}>
+                  <div className="budget-metric-card">
+                    <span className="budget-metric-label">Planned Trip Budget</span>
+                    <span className="budget-metric-val">
                       {plannedTripBudget !== null
                         ? formatCurrency(plannedTripBudget, tripCurrency)
                         : 'Unavailable'}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#8c9e96' }}>
+                    <span className="budget-metric-sub">
                       {dailyBudgetNum !== null && totalDays !== null
                         ? `${formatCurrency(dailyBudgetNum, tripCurrency)}/day × ${totalDays} ${daysLabel}`
                         : dailyBudgetNum !== null
@@ -745,60 +586,35 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                   </div>
 
                   {/* 2. Estimated Activity Costs Total */}
-                  <div
-                    style={{
-                      backgroundColor: '#fbfaf6',
-                      border: '1px solid #edece6',
-                      borderRadius: '9px',
-                      padding: '10px 14px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                    }}
-                  >
-                    <span style={{ fontSize: '11px', color: '#60716a', fontWeight: 600 }}>
-                      Estimated Activity Costs
-                    </span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#1b5947' }}>
+                  <div className="budget-metric-card">
+                    <span className="budget-metric-label">Estimated Activity Costs</span>
+                    <span className="budget-metric-val" style={{ color: 'var(--color-brand-accent)' }}>
                       {formatCurrency(totalEstimatedCost, tripCurrency)}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#8c9e96' }}>
+                    <span className="budget-metric-sub">
                       Across {totalDays !== null ? `${totalDays} ${daysLabel}` : 'all days'}
                     </span>
                   </div>
 
                   {/* 3. Remaining Budget */}
-                  <div
-                    style={{
-                      backgroundColor: '#fbfaf6',
-                      border: '1px solid #edece6',
-                      borderRadius: '9px',
-                      padding: '10px 14px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                    }}
-                  >
-                    <span style={{ fontSize: '11px', color: '#60716a', fontWeight: 600 }}>
-                      Remaining Budget
-                    </span>
+                  <div className="budget-metric-card">
+                    <span className="budget-metric-label">Remaining Budget</span>
                     <span
+                      className="budget-metric-val"
                       style={{
-                        fontSize: '16px',
-                        fontWeight: 700,
                         color:
                           remainingBudget === null
-                            ? '#60716a'
+                            ? 'var(--color-text-secondary)'
                             : isOverBudget
-                            ? '#c53030'
-                            : '#22543d',
+                            ? 'var(--color-accent-rose)'
+                            : 'var(--color-accent-emerald)',
                       }}
                     >
                       {remainingBudget !== null
                         ? formatCurrency(remainingBudget, tripCurrency)
                         : 'Unavailable'}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#8c9e96' }}>
+                    <span className="budget-metric-sub">
                       {remainingBudget !== null
                         ? isOverBudget
                           ? 'Exceeds planned budget'
@@ -808,26 +624,14 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                   </div>
 
                   {/* 4. Average Cost Per Day */}
-                  <div
-                    style={{
-                      backgroundColor: '#fbfaf6',
-                      border: '1px solid #edece6',
-                      borderRadius: '9px',
-                      padding: '10px 14px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                    }}
-                  >
-                    <span style={{ fontSize: '11px', color: '#60716a', fontWeight: 600 }}>
-                      Avg. Activity Cost / Day
-                    </span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#18352f' }}>
+                  <div className="budget-metric-card">
+                    <span className="budget-metric-label">Avg. Activity Cost / Day</span>
+                    <span className="budget-metric-val">
                       {averageDailyCost !== null
                         ? formatCurrency(averageDailyCost, tripCurrency)
                         : 'Unavailable'}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#8c9e96' }}>
+                    <span className="budget-metric-sub">
                       {totalDays !== null
                         ? `Averaged over ${totalDays} ${daysLabel}`
                         : 'Trip duration unavailable'}
@@ -835,16 +639,16 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                   </div>
                 </div>
 
-                {/* Incomplete Estimate Notice if any costs were unparsed */}
+                {/* Notice if any unparsed costs */}
                 {unparsedCount > 0 && (
                   <div
                     style={{
-                      fontSize: '11px',
-                      color: '#856404',
-                      backgroundColor: '#fff3cd',
-                      border: '1px solid #ffeeba',
-                      borderRadius: '6px',
-                      padding: '6px 10px',
+                      fontSize: '11.5px',
+                      color: '#92400e',
+                      backgroundColor: 'var(--color-accent-amber-bg)',
+                      border: '1px solid var(--color-accent-amber-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '8px 12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
@@ -852,13 +656,13 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                   >
                     <span>ℹ️</span>
                     <span>
-                      Note: {unparsedCount} activity cost {unparsedCount === 1 ? 'estimate' : 'estimates'} could not be verified in {tripCurrency} and {unparsedCount === 1 ? 'was' : 'were'} excluded from numeric totals.
+                      Note: {unparsedCount} activity {unparsedCount === 1 ? 'cost' : 'costs'} could not be verified in {tripCurrency} and {unparsedCount === 1 ? 'was' : 'were'} excluded from numeric totals.
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Day-by-Day Cards */}
+              {/* Day-by-Day Sections */}
               {itinerary.days && itinerary.days.length > 0 ? (
                 itinerary.days.map((day, dayIdx) => {
                   const dayId = day.day_number ?? (dayIdx + 1)
@@ -873,135 +677,40 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                   )
 
                   return (
-                    <div
-                      key={dayId}
-                      style={{
-                        border: '1px solid #e9e9df',
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        backgroundColor: '#fff',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {/* Day Header (Clickable Expand/Collapse) */}
+                    <article className="itinerary-day-card" key={dayId}>
+                      {/* Day Header (Clickable Toggle) */}
                       <button
                         type="button"
+                        className="itinerary-day-toggle-btn"
                         onClick={(e) => toggleDay(dayId, e)}
                         aria-expanded={isDayExpanded}
                         aria-label={`Toggle Day ${dayId}: ${dayTitle}`}
-                        style={{
-                          width: '100%',
-                          background: '#fbfaf6',
-                          border: 'none',
-                          borderBottom: isDayExpanded ? '1px solid #e9e9df' : 'none',
-                          padding: '14px 18px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          flexWrap: 'wrap',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                          textAlign: 'left',
-                          fontFamily: 'inherit',
-                        }}
                       >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                          }}
-                        >
-                          <span
-                            style={{
-                              backgroundColor: '#1b5947',
-                              color: '#fff',
-                              fontWeight: 700,
-                              fontSize: '12px',
-                              padding: '3px 9px',
-                              borderRadius: '6px',
-                            }}
-                          >
-                            Day {dayId}
-                          </span>
-                          <h4
-                            style={{
-                              margin: 0,
-                              fontSize: '16px',
-                              fontFamily: 'Manrope, sans-serif',
-                              color: '#18352f',
-                            }}
-                          >
-                            {dayTitle}
-                          </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="itinerary-day-badge">Day {dayId}</span>
+                          <h4 className="itinerary-day-title">{dayTitle}</h4>
                         </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          {/* Day Activity Cost Estimate Badge */}
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              color: '#18352f',
-                              fontWeight: 600,
-                              backgroundColor: '#fff',
-                              border: '1px solid #dce8dc',
-                              borderRadius: '6px',
-                              padding: '3px 8px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                            }}
-                          >
+
+                        <div className="itinerary-day-meta-group">
+                          <span className="itinerary-day-cost-tag">
                             💰 Est: {dayCostBadge}{dayBreakdown.dayUnparsed > 0 ? '*' : ''}
                           </span>
 
                           {day.date && (
-                            <span
-                              style={{
-                                fontSize: '12px',
-                                color: '#60716a',
-                                fontWeight: 500,
-                              }}
-                            >
+                            <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
                               📅 {day.date}
                             </span>
                           )}
-                          <span
-                            style={{
-                              fontSize: '12px',
-                              color: '#1b5947',
-                              fontWeight: 600,
-                              backgroundColor: '#fff',
-                              border: '1px solid #dce8dc',
-                              borderRadius: '6px',
-                              padding: '3px 10px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
-                          >
+
+                          <span className="itinerary-day-collapse-indicator">
                             {isDayExpanded ? 'Collapse ▲' : 'Expand ▼'}
                           </span>
                         </div>
                       </button>
 
-                      {/* Day Activities */}
+                      {/* Day Content */}
                       {isDayExpanded && (
-                        <div
-                          style={{
-                            padding: '14px 18px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px',
-                          }}
-                        >
+                        <div className="itinerary-day-body">
                           {/* Embedded Day Map */}
                           <DayMap
                             dayNumber={dayId}
@@ -1010,296 +719,134 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
                             activities={dayActivities}
                           />
 
-                          {/* Day Route & Directions Action Bar */}
+                          {/* Day Route & Directions Toolbar */}
                           {dayRouteUrl && (
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                flexWrap: 'wrap',
-                                gap: '8px',
-                                paddingBottom: '6px',
-                                borderBottom: '1px dashed #e9e9df',
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: '12px',
-                                  color: '#60716a',
-                                  fontWeight: 500,
-                                }}
-                              >
+                            <div className="itinerary-route-bar">
+                              <span className="itinerary-route-stops-count">
                                 🗺️ Day Route • {dayActivities.length}{' '}
-                                {dayActivities.length === 1
-                                  ? 'stop'
-                                  : 'stops in sequence'}
+                                {dayActivities.length === 1 ? 'stop' : 'stops in sequence'}
                               </span>
                               <a
                                 href={dayRouteUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                className="itinerary-route-link"
                                 onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  color: '#1b5947',
-                                  backgroundColor: '#eef5ee',
-                                  border: '1px solid #cce2cc',
-                                  padding: '5px 12px',
-                                  borderRadius: '6px',
-                                  textDecoration: 'none',
-                                  transition: 'background-color 0.15s ease',
-                                }}
-                                onMouseOver={(e) =>
-                                  (e.currentTarget.style.backgroundColor =
-                                    '#dcecdc')
-                                }
-                                onMouseOut={(e) =>
-                                  (e.currentTarget.style.backgroundColor =
-                                    '#eef5ee')
-                                }
                               >
-                                🗺️ Get Day Route & Directions
+                                🗺️ Get Day Route &amp; Directions ↗
                               </a>
                             </div>
                           )}
 
+                          {/* Activity Items List */}
                           {dayActivities && dayActivities.length > 0 ? (
-                            dayActivities.map((act, actIdx) => {
-                              const actKey = `${dayId}-${actIdx}`
-                              const isActExpanded = Boolean(expandedActivities[actKey])
-                              const title = act.title || act.name || act.activity_name || 'Activity'
-                              const time = act.time || act.time_range || act.timing || ''
-                              const category = act.category || act.type || ''
-                              const cost = act.estimated_cost || act.cost || act.price || ''
-                              const description = act.description || act.details || ''
-                              const activityMapUrl = getGoogleMapsSearchUrl(
-                                act,
-                                trip?.destination || itinerary?.destination || ''
-                              )
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {dayActivities.map((act, actIdx) => {
+                                const actKey = `${dayId}-${actIdx}`
+                                const isActExpanded = Boolean(expandedActivities[actKey])
+                                const title = act.title || act.name || act.activity_name || 'Activity'
+                                const time = act.time || act.time_range || act.timing || ''
+                                const category = act.category || act.type || ''
+                                const cost = act.estimated_cost || act.cost || act.price || ''
+                                const description = act.description || act.details || ''
+                                const activityMapUrl = getGoogleMapsSearchUrl(
+                                  act,
+                                  trip?.destination || itinerary?.destination || ''
+                                )
 
-                              return (
-                                <div
-                                  key={actIdx}
-                                  onClick={(e) => toggleActivity(actKey, e)}
-                                  role="button"
-                                  tabIndex={0}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault()
-                                      toggleActivity(actKey, e)
-                                    }
-                                  }}
-                                  style={{
-                                    padding: '12px 14px',
-                                    backgroundColor: '#fafaf6',
-                                    borderRadius: '10px',
-                                    border: '1px solid #f0f0e6',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '6px',
-                                    cursor: 'pointer',
-                                    userSelect: 'none',
-                                    transition: 'background-color 0.15s ease',
-                                  }}
-                                >
-                                  {/* Activity Header Row: Title + Toggle button */}
+                                return (
                                   <div
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      gap: '10px',
-                                      flexWrap: 'wrap',
+                                    key={actIdx}
+                                    className="itinerary-activity-item"
+                                    onClick={(e) => toggleActivity(actKey, e)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        toggleActivity(actKey, e)
+                                      }
                                     }}
                                   >
-                                    <h5
-                                      style={{
-                                        margin: 0,
-                                        fontSize: '15px',
-                                        color: '#18352f',
-                                        fontWeight: 700,
-                                        flex: 1,
-                                      }}
-                                    >
-                                      {title}
-                                    </h5>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => toggleActivity(actKey, e)}
-                                      style={{
-                                        fontSize: '12px',
-                                        color: '#1b5947',
-                                        fontWeight: 600,
-                                        backgroundColor: '#fff',
-                                        border: '1px solid #dce8dc',
-                                        borderRadius: '6px',
-                                        padding: '3px 10px',
-                                        flexShrink: 0,
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                      }}
-                                    >
-                                      {isActExpanded ? 'Collapse ▲' : 'Expand ▼'}
-                                    </button>
-                                  </div>
-
-                                  {/* Expanded Activity Details: time, description, category, estimated_cost */}
-                                  {isActExpanded && (
-                                    <div
-                                      onClick={(e) => e.stopPropagation()}
-                                      style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '8px',
-                                        paddingTop: '8px',
-                                        borderTop: '1px dashed #e2e2d5',
-                                        marginTop: '4px',
-                                        cursor: 'default',
-                                      }}
-                                    >
-                                      {/* Badges row: Time, Category, Estimated Cost, and View on Map */}
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '8px',
-                                          flexWrap: 'wrap',
-                                        }}
+                                    {/* Header Row */}
+                                    <div className="itinerary-activity-header">
+                                      <h5 className="itinerary-activity-title">
+                                        <span style={{ color: 'var(--color-brand-accent)', marginRight: '6px' }}>
+                                          {actIdx + 1}.
+                                        </span>
+                                        {title}
+                                      </h5>
+                                      <button
+                                        type="button"
+                                        className="itinerary-activity-toggle-btn"
+                                        onClick={(e) => toggleActivity(actKey, e)}
                                       >
-                                        {time && (
-                                          <span
-                                            style={{
-                                              backgroundColor: '#e9f2e8',
-                                              color: '#1b5947',
-                                              fontSize: '11px',
-                                              fontWeight: 700,
-                                              padding: '3px 8px',
-                                              borderRadius: '5px',
-                                            }}
-                                          >
-                                            🕒 {time}
-                                          </span>
-                                        )}
+                                        {isActExpanded ? 'Collapse ▲' : 'Expand ▼'}
+                                      </button>
+                                    </div>
 
-                                        {category && (
-                                          <span
-                                            style={{
-                                              backgroundColor: '#edf2f7',
-                                              color: '#4a5568',
-                                              fontSize: '11px',
-                                              fontWeight: 600,
-                                              padding: '3px 8px',
-                                              borderRadius: '5px',
-                                            }}
-                                          >
-                                            🏷️ {category}
-                                          </span>
-                                        )}
+                                    {/* Expanded Details */}
+                                    {isActExpanded && (
+                                      <div
+                                        className="itinerary-activity-expanded-body"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div className="itinerary-activity-tags-row">
+                                          {time && (
+                                            <span className="itinerary-tag-time">
+                                              🕒 {time}
+                                            </span>
+                                          )}
+                                          {category && (
+                                            <span className="itinerary-tag-category">
+                                              🏷️ {category}
+                                            </span>
+                                          )}
+                                          {cost && (
+                                            <span className="itinerary-tag-cost">
+                                              💰 {cost}
+                                            </span>
+                                          )}
+                                          {activityMapUrl && (
+                                            <a
+                                              href={activityMapUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="itinerary-link-map"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              📍 View on Map
+                                            </a>
+                                          )}
+                                        </div>
 
-                                        {cost && (
-                                          <span
-                                            style={{
-                                              backgroundColor: '#fefcbf',
-                                              color: '#744210',
-                                              fontSize: '11px',
-                                              fontWeight: 600,
-                                              padding: '3px 8px',
-                                              borderRadius: '5px',
-                                            }}
-                                          >
-                                            💰 {cost}
-                                          </span>
-                                        )}
-
-                                        {activityMapUrl && (
-                                          <a
-                                            href={activityMapUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{
-                                              backgroundColor: '#eef5ee',
-                                              color: '#1b5947',
-                                              fontSize: '11px',
-                                              fontWeight: 600,
-                                              padding: '3px 8px',
-                                              borderRadius: '5px',
-                                              border: '1px solid #cce2cc',
-                                              textDecoration: 'none',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '4px',
-                                              transition:
-                                                'background-color 0.15s ease',
-                                            }}
-                                            onMouseOver={(e) =>
-                                              (e.currentTarget.style.backgroundColor =
-                                                '#d8ebd8')
-                                            }
-                                            onMouseOut={(e) =>
-                                              (e.currentTarget.style.backgroundColor =
-                                                '#eef5ee')
-                                            }
-                                          >
-                                            📍 View on Map
-                                          </a>
+                                        {description ? (
+                                          <p className="itinerary-activity-desc">
+                                            {description}
+                                          </p>
+                                        ) : (
+                                          <p className="itinerary-activity-desc" style={{ fontStyle: 'italic', color: 'var(--color-text-muted)' }}>
+                                            No additional description provided.
+                                          </p>
                                         )}
                                       </div>
-
-                                      {/* Description */}
-                                      {description ? (
-                                        <p
-                                          style={{
-                                            margin: 0,
-                                            fontSize: '13px',
-                                            color: '#53665e',
-                                            lineHeight: 1.6,
-                                          }}
-                                        >
-                                          {description}
-                                        </p>
-                                      ) : (
-                                        <p
-                                          style={{
-                                            margin: 0,
-                                            fontSize: '12px',
-                                            color: '#8c9e96',
-                                            fontStyle: 'italic',
-                                          }}
-                                        >
-                                          No additional description provided.
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           ) : (
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: '13px',
-                                color: '#60716a',
-                              }}
-                            >
+                            <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--color-text-secondary)' }}>
                               No activities listed for this day.
                             </p>
                           )}
                         </div>
                       )}
-                    </div>
+                    </article>
                   )
                 })
               ) : (
-                <p style={{ margin: 0, fontSize: '14px', color: '#60716a' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                   No day plans available.
                 </p>
               )}
@@ -1307,101 +854,46 @@ function ItineraryModal({ trip, onClose, onItineraryUpdated }) {
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div
-          className="itinerary-modal-footer"
-          style={{
-            flex: '0 0 auto',
-            flexShrink: 0,
-            padding: '14px 28px',
-            borderTop: '1px solid #eef2ee',
-            backgroundColor: '#fff',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
+        {/* Modal Footer */}
+        <div className="itinerary-modal-footer">
           {itinerary && !generating && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 type="button"
+                className="btn-primary"
                 onClick={handleDownloadPdf}
                 disabled={exportingPdf}
-                style={{
-                  backgroundColor: '#1b5947',
-                  border: 'none',
-                  color: '#fff',
-                  padding: '9px 18px',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: exportingPdf ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 4px rgba(27, 89, 71, 0.2)',
-                  opacity: exportingPdf ? 0.7 : 1,
-                  transition: 'background-color 0.15s ease',
-                }}
+                style={{ padding: '9px 18px', fontSize: '13px' }}
                 title="Download itinerary as a formatted PDF"
               >
-                {exportingPdf ? '⏳ Generating PDF...' : '📄 Download PDF'}
+                {exportingPdf ? (
+                  <>
+                    <span className="spinner-dot" aria-hidden="true" style={{ width: '12px', height: '12px' }}></span>
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <span>📄 Download PDF</span>
+                )}
               </button>
 
               <button
                 type="button"
+                className="btn-secondary"
                 onClick={handleGenerate}
                 disabled={generating || exportingPdf}
-                style={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #1b5947',
-                  color: '#1b5947',
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: generating || exportingPdf ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                style={{ padding: '9px 16px', fontSize: '13px' }}
               >
                 🔄 Regenerate with AI
               </button>
-
-              {pdfSuccess && (
-                <span
-                  style={{
-                    fontSize: '12px',
-                    color: '#22863a',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  ✓ {pdfSuccess}
-                </span>
-              )}
             </div>
           )}
 
           <button
             type="button"
+            className="btn-secondary"
             onClick={onClose}
             disabled={generating || exportingPdf}
-            style={{
-              marginLeft: 'auto',
-              padding: '9px 18px',
-              backgroundColor: '#fbfaf6',
-              border: '1px solid #dcdcd0',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '13px',
-              color: '#53665e',
-              cursor: generating || exportingPdf ? 'not-allowed' : 'pointer',
-            }}
+            style={{ marginLeft: 'auto', padding: '9px 18px', fontSize: '13px' }}
           >
             Close
           </button>
